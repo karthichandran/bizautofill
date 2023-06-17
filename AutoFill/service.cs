@@ -15,16 +15,17 @@ namespace AutoFill
         public service()
         {
             client = new HttpClient();
-             client.BaseAddress = new Uri("http://leansyshost-002-site4.atempurl.com/api/"); //BIZ Live
+           //  client.BaseAddress = new Uri("https://bizapi.tdsbizservices.in/api/"); //BIZ Live
 
 
-            //client.BaseAddress = new Uri("https://localhost:44301/api/");
+            client.BaseAddress = new Uri("https://localhost:44301/api/");
 
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        public IList<TdsRemittanceDto> GetTdsRemitance(string custName,string premises,string unit, string fromUnit, string toUnit,string lot)
+
+        public IList<TdsRemittanceDto> GetTdsRemitance(string custName, string premises, string unit, string fromUnit, string toUnit, string lot)
         {
             IList<TdsRemittanceDto> remitance = null;
             HttpResponseMessage response = new HttpResponseMessage();
@@ -49,7 +50,7 @@ namespace AutoFill
             //    query["remittanceStatusID"] = remittanceStatusID;
 
             response = client.GetAsync(QueryHelpers.AddQueryString("TdsRemittance/pendingTds", query)).Result;
-           
+
             if (response.IsSuccessStatusCode)
             {
                 remitance = response.Content.ReadAsAsync<IList<TdsRemittanceDto>>().Result;
@@ -62,7 +63,7 @@ namespace AutoFill
             TdsRemittanceDto remitance = null;
             HttpResponseMessage response = new HttpResponseMessage();
 
-            response = client.GetAsync("traces/"+ clientPaymentTransactionID).Result;
+            response = client.GetAsync("traces/" + clientPaymentTransactionID).Result;
 
             if (response.IsSuccessStatusCode)
             {
@@ -126,7 +127,8 @@ namespace AutoFill
             {
                 remitance = response.Content.ReadAsAsync<IList<TdsRemittanceDto>>().Result;
             }
-            foreach(var entity in remitance){
+            foreach (var entity in remitance)
+            {
 
                 entity.OnlyTDS = !entity.OnlyTDS;
             }
@@ -138,8 +140,8 @@ namespace AutoFill
 
             AutoFillDto autoFillDto = null;
             HttpResponseMessage response = new HttpResponseMessage();
-            response = client.GetAsync("AutoFill/"+ clientPaymentTransactionID).Result;
-          
+            response = client.GetAsync("AutoFill/" + clientPaymentTransactionID).Result;
+
             if (response.IsSuccessStatusCode)
             {
                 autoFillDto = response.Content.ReadAsAsync<AutoFillDto>().Result;
@@ -178,7 +180,7 @@ namespace AutoFill
         public bool SetToTdsPaid(int clientPaymentTransactionID)
         {
             HttpResponseMessage response = new HttpResponseMessage();
-            response = client.PutAsync("ClientPayment/remittanceStatus/" + clientPaymentTransactionID+"/2",null).Result;
+            response = client.PutAsync("ClientPayment/remittanceStatus/" + clientPaymentTransactionID + "/2", null).Result;
 
             if (response.IsSuccessStatusCode)
             {
@@ -200,38 +202,87 @@ namespace AutoFill
             return remittanceDto;
         }
 
-        public int SaveRemittance(RemittanceDto remittanceDto) {
+        public int SaveRemittance(RemittanceDto remittanceDto)
+        {
             HttpResponseMessage response = new HttpResponseMessage();
             bool isNew = remittanceDto.RemittanceID == 0;
 
             //var json = JsonConvert.SerializeObject(remittanceDto);
             //var data = new StringContent(json, Encoding.UTF8, "application/json");
 
-           CreateRemittaneCommand createRemittaneCommand=new CreateRemittaneCommand();
+            CreateRemittaneCommand createRemittaneCommand = new CreateRemittaneCommand();
             createRemittaneCommand.remittanceDto = remittanceDto;
 
             if (isNew)
-                response = client.PostAsJsonAsync("TdsRemittance" , createRemittaneCommand).Result;
+                response = client.PostAsJsonAsync("TdsRemittance", createRemittaneCommand).Result;
             else
                 response = client.PutAsJsonAsync("TdsRemittance", createRemittaneCommand).Result;
 
             if (response.IsSuccessStatusCode)
             {
                 if (isNew)
-                return response.Content.ReadAsAsync<int>().Result;
+                    return response.Content.ReadAsAsync<int>().Result;
 
                 return remittanceDto.RemittanceID;
             }
             return 0;
         }
 
-        public string UploadFile(MultipartFormDataContent file,string remittanceId, int category) {
+        public int SaveDebitAdviceFile(MultipartFormDataContent file)
+        {
             HttpResponseMessage response = new HttpResponseMessage();
-            response = client.PostAsync("traces/"+ remittanceId + "/"+category, file).Result;
+
+            response = client.PostAsync("DebitAdvice/uploadFile", file).Result;
+
+            if (response.IsSuccessStatusCode)
+            {
+                return response.Content.ReadAsAsync<int>().Result;
+
+            }
+            return 0;
+        }
+
+        public int SaveDebitAdvice(DebitAdviceDto debitAdviceDto)
+        {
+            HttpResponseMessage response = new HttpResponseMessage();
+
+            CreateDebitAdviceCommand debitAdviceObj = new CreateDebitAdviceCommand();
+            debitAdviceObj.debitAdviceDto = debitAdviceDto;
+            response = client.PostAsJsonAsync("DebitAdvice", debitAdviceObj).Result;
+
+            if (response.IsSuccessStatusCode)
+            {
+                return response.Content.ReadAsAsync<int>().Result;
+
+            }
+            return 0;
+        }
+
+        public DebitAdviceDto GetDebitAdviceByClienttransId(int transId)
+        {
+            HttpResponseMessage response = new HttpResponseMessage();
+
+            CreateDebitAdviceCommand debitAdviceObj = new CreateDebitAdviceCommand();
+            response = client.GetAsync("DebitAdvice/getById/" + transId).Result;
+
+            if (response.IsSuccessStatusCode)
+            {
+                return response.Content.ReadAsAsync<DebitAdviceDto>().Result;
+
+            }
+
+            return new DebitAdviceDto();
+        }
+
+        public string UploadFile(MultipartFormDataContent file, string remittanceId, int category)
+        {
+            HttpResponseMessage response = new HttpResponseMessage();
+            response = client.PostAsync("traces/" + remittanceId + "/" + category, file).Result;
             return response.Content.ToString();
         }
 
-        public CustomerPropertyFileDto GetFile(string blobId) {
+        public CustomerPropertyFileDto GetFile(string blobId)
+        {
             CustomerPropertyFileDto customerPropertyFileDto = null;
             HttpResponseMessage response = new HttpResponseMessage();
             response = client.GetAsync("files/fileinfo/" + blobId).Result;
@@ -248,7 +299,7 @@ namespace AutoFill
             //}
         }
 
-        public async  void DownloadFile(CustomerPropertyFileDto customerPropertyFileDto)
+        public async void DownloadFile(CustomerPropertyFileDto customerPropertyFileDto)
         {
             try
             {
@@ -259,9 +310,10 @@ namespace AutoFill
                 var fs = File.Create(downloadPath);
                 ms.Seek(0, SeekOrigin.Begin);
                 ms.CopyTo(fs);
-                MessageBox.Show("File is downloaded successfully. Please Refer the path : "+ downloadPath);
+                MessageBox.Show("File is downloaded successfully. Please Refer the path : " + downloadPath);
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 MessageBox.Show("File is not downloaded");
             }
 
@@ -367,7 +419,9 @@ namespace AutoFill
         }
     }
 
-    public class BankAccountDetailsDto {
+
+    public class BankAccountDetailsDto
+    {
         public int AccountId { get; set; }
         public string UserName { get; set; }
         public string UserPassword { get; set; }
@@ -392,7 +446,7 @@ namespace AutoFill
     }
 
     public class RemittanceStatus
-    {        
+    {
         public int RemittanceStatusID { get; set; }
         public string RemittanceStatusText { get; set; }
 
@@ -403,7 +457,7 @@ namespace AutoFill
         public string BankName { get; set; }
 
     }
-    public class CustomerPropertyFileDto 
+    public class CustomerPropertyFileDto
     {
         public int BlobID { get; set; }
         public Guid? OwnershipID { get; set; }
@@ -416,11 +470,12 @@ namespace AutoFill
         public string PanID { get; set; }
 
         public int FileCategoryId { get; set; } = 4;
-        
+
     }
 
 
-    public class CreateRemittaneCommand {
+    public class CreateRemittaneCommand
+    {
         public RemittanceDto remittanceDto { get; set; }
     }
 
@@ -505,6 +560,8 @@ namespace AutoFill
         public virtual decimal ChallanAmount { get; set; }
 
         public bool OnlyTDS { get; set; }
+        public bool IsDebitAdvice { get; set; }
+        public bool Show26qb { get; set; }
     }
 
     public class AutoFillDto
@@ -662,6 +719,20 @@ namespace AutoFill
         public string Message { get; set; }
         public int? Error_code { get; set; }
         public int Opt { get; set; }
+    }
+
+    public class CreateDebitAdviceCommand
+    {
+        public DebitAdviceDto debitAdviceDto { get; set; }
+    }
+
+    public class DebitAdviceDto
+    {
+        public int DebitAdviceID { get; set; }
+        public int ClientPaymentTransactionID { get; set; }
+        public string CinNo { get; set; }
+        public DateTime? PaymentDate { get; set; }
+        public int? BlobId { get; set; }
     }
 
 }
